@@ -91,7 +91,11 @@ async function createLinter(): Promise<any> {
   const descriptor = await loadTextlintrc({
     configFilePath: pathModule.join(textlintRoot, ".textlintrc"),
   });
-  cachedLinter = createLinter({ descriptor });
+  cachedLinter = createLinter({
+    descriptor,
+    cwd: textlintRoot,
+    ignoreFilePath: pathModule.join(textlintRoot, ".textlintignore"),
+  });
   return cachedLinter;
 }
 
@@ -133,6 +137,19 @@ function offsetToPosition(
 // Lint（キャッシュ付き）
 // ============================================================
 
+// lintText does not respect .textlintignore, and lintFiles reads from disk instead of the unsaved buffer
+async function isIgnored(linter: any, uri: string): Promise<boolean> {
+  if (!fs.existsSync(pathModule.join(textlintRoot, ".textlintignore")))
+    return false;
+  try {
+    const scan = await linter.scanFilePath(uriToPath(uri));
+    return scan.status === "ignored";
+  } catch (e) {
+    log(`WARNING: .textlintignore requires textlint >= 14.1.0: ${e}`);
+    return false;
+  }
+}
+
 let lintSeq = 0;
 const lintCache = new Map<string, { version: number; diagnostics: any[] }>();
 
@@ -149,10 +166,9 @@ async function lint(uri: string): Promise<any[]> {
     const originalCwd = process.cwd();
     process.chdir(textlintRoot);
     const linter = await createLinter();
-    const result = await linter.lintText(
-      doc.text,
-      `.textlint-lsp-cache/_lint${ext}`,
-    );
+    const result = (await isIgnored(linter, uri))
+      ? { messages: [] }
+      : await linter.lintText(doc.text, `.textlint-lsp-cache/_lint${ext}`);
     process.chdir(originalCwd);
     const diagnostics = toDiagnostics(result.messages ?? [], doc.text);
     lintCache.set(uri, { version: doc.version, diagnostics });
