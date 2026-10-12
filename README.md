@@ -36,6 +36,23 @@ npm install --save-dev @textlint-ja/no-synonyms prh
 1. ダウンロードして展開
 2. `Ctrl+Shift+P` → `zed: install dev extension` → 展開したフォルダを指定
 
+### JetBrains IDEs（IntelliJ IDEAなど）
+
+[LSP4IJ](https://plugins.jetbrains.com/plugin/23257-lsp4ij)プラグインを使用します。
+
+1. LSP4IJプラグインをインストール\
+  **Settings > Plugins > marketplace** で `LSP4IJ` を検索してインストール
+2. Language Serverの設定\
+  **Settings > Languages & Frameworks > Language Servers > +** で textlint-lsp の設定を追加します
+   1. Serverタブ
+       - Name: 任意
+       - Command: `$PROJECT_DIR$/node_modules/.bin/textlint-lsp`
+           - nodeのパスが解決できず実行できない環境では `/opt/homebrew/bin/node $PROJECT_DIR$/node_modules/.bin/textlint-lsp` のようにnodeのフルパスを指定
+   2. Mappingタブ
+       - **File name patterns** にパターンを追加
+           - Markdownの場合、`*.md`
+           - `articles/*.md` のようなパス指定はできない。`.textlintignore`ファイルを使用してください
+
 ## できること
 
 - 文字入力のたびに自動校正
