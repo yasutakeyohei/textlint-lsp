@@ -160,7 +160,9 @@ async function lint(uri: string): Promise<any[]> {
   const cached = lintCache.get(uri);
   if (cached && cached.version === doc.version) return cached.diagnostics;
 
-  const ext = doc.languageId === "mdx" ? ".mdx" : ".md";
+  const ext =
+    pathModule.extname(uriToPath(uri)) ||
+    (doc.languageId === "mdx" ? ".mdx" : ".md");
 
   try {
     const originalCwd = process.cwd();
@@ -240,7 +242,9 @@ async function getCodeActions(
   const doc = docs.get(uri);
   if (!doc || !loadTextlint(uri)) return [];
 
-  const ext = doc.languageId === "mdx" ? ".mdx" : ".md";
+  const ext =
+    pathModule.extname(uriToPath(uri)) ||
+    (doc.languageId === "mdx" ? ".mdx" : ".md");
   const filePath = pathModule.join(
     textlintRoot,
     `.textlint-lsp-cache/_ca${ext}`,
@@ -266,8 +270,14 @@ async function getCodeActions(
   }
 
   const isMdx = uri.endsWith(".mdx") || doc.languageId?.toLowerCase() === "mdx";
-  const wrapComment = (body: string) =>
-    isMdx ? `{/* ${body} */}\n` : `${body}\n`;
+  const isReview = uri.endsWith(".re");
+  const toComment = (directive: string) =>
+    isReview
+      ? `#@# ${directive}`
+      : isMdx
+        ? `{/* <!-- ${directive} --> */}`
+        : `<!-- ${directive} -->`;
+  const docLines = doc.text.split("\n");
 
   const actions: any[] = [];
   const seenDisable = new Set<string>();
@@ -276,6 +286,9 @@ async function getCodeActions(
   for (const msg of result.messages) {
     const msgLine = msg.line - 1;
     const msgCol = msg.column - 1;
+    const msgEndLine = (msg.loc?.end.line ?? msg.line) - 1;
+    const msgEndLineLength = (docLines[msgEndLine] ?? "").replace(/\r$/, "")
+      .length;
     if (contextDiagnostics.length === 0) continue;
     const matches = contextDiagnostics.some((d: any) => {
       const ds = d.range.start,
@@ -328,7 +341,15 @@ async function getCodeActions(
                   start: { line: msgLine, character: 0 },
                   end: { line: msgLine, character: 0 },
                 },
-                newText: wrapComment(`<!-- textlint-disable ${msg.ruleId} -->`),
+                newText: `${toComment(`textlint-disable ${msg.ruleId}`)}\n`,
+              },
+              // Inserting at the start of the next line fails when the message is on the last line
+              {
+                range: {
+                  start: { line: msgEndLine, character: msgEndLineLength },
+                  end: { line: msgEndLine, character: msgEndLineLength },
+                },
+                newText: `\n${toComment(`textlint-enable ${msg.ruleId}`)}`,
               },
             ],
           },
@@ -350,7 +371,7 @@ async function getCodeActions(
                   start: { line: msgLine, character: 0 },
                   end: { line: msgLine, character: 0 },
                 },
-                newText: wrapComment(`<!-- textlint-disable -->`),
+                newText: `${toComment("textlint-disable")}\n`,
               },
             ],
           },
