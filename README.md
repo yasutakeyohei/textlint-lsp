@@ -46,12 +46,17 @@ npm install --save-dev @textlint-ja/no-synonyms prh
   **Settings > Languages & Frameworks > Language Servers > +** で textlint-lsp の設定を追加します
    1. Serverタブ
        - Name: 任意
-       - Command: `$PROJECT_DIR$/node_modules/.bin/textlint-lsp`
-           - nodeのパスが解決できず実行できない環境では `/opt/homebrew/bin/node $PROJECT_DIR$/node_modules/.bin/textlint-lsp` のようにnodeのフルパスを指定
+       - Command: `textlint-lsp`
+           - パスが解決できず実行できない環境では `/opt/homebrew/bin/textlint-lsp` のようにフルパスを指定します。パスは `which textlint-lsp` で確認できます
    2. Mappingタブ
        - **File name patterns** にパターンを追加
            - Markdownの場合、`*.md`
-           - `articles/*.md` のようなパス指定はできない。`.textlintignore`ファイルを使用してください
+           - `articles/*.re` のようなパス指定はできません。パスによるフィルタリングには`.textlintignore`ファイルを使用してください
+
+> [!IMPORTANT]\
+> LSP4IJを使用する場合、textlint-lspはグローバルインストール（`npm install -g`）してください。
+> LSP4IJのLanguage Server設定はコンピューター単位で保持されるため、全プロジェクトで有効になります。
+> textlint-lspを特定のプロジェクトにだけインストールして使用すると、インストールしていないプロジェクトでMarkdownファイルを開いたときにtextlint-lspが見つからず起動に失敗します。起動失敗が20回続くと、LSP4IJはそのLanguage Serverを停止します。
 
 ## できること
 
